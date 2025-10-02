@@ -1,37 +1,34 @@
 (function() {
     'use strict';
-    try {
-        console.log('Kinoger v7 script started at ' + new Date().toLocaleTimeString());
+    setTimeout(function() {
+        try {
+            console.log('Kinoger v8 script started at ' + new Date().toLocaleTimeString());
 
-        // Проверка наличия Lampa перед выполнением
-        if (typeof Lampa === 'undefined') {
-            console.error('Lampa API not loaded at ' + new Date().toLocaleTimeString());
-            return;
-        }
+            if (typeof Lampa === 'undefined') {
+                console.error('Lampa API not loaded at ' + new Date().toLocaleTimeString());
+                return;
+            }
 
-        function component() {
-            this.initialize = function() {
-                console.log('Kinoger v7 component initialized at ' + new Date().toLocaleTimeString());
-                var scroll = new Lampa.Scroll({ mask: true, over: true });
-                scroll.body().append('<div>Kinoger Test Menu v7</div>');
-                Lampa.Controller.enable('content');
-            };
-        }
+            function component() {
+                this.initialize = function() {
+                    console.log('Kinoger v8 component initialized at ' + new Date().toLocaleTimeString());
+                    var scroll = new Lampa.Scroll({ mask: true, over: true });
+                    scroll.body().append('<div>Kinoger Test Menu v8</div>');
+                    Lampa.Controller.enable('content');
+                };
+            }
 
-        function startPlugin() {
-            console.log('Starting Kinoger v7 plugin at ' + new Date().toLocaleTimeString());
-            Lampa.Component.add('kinoger_test_v7', component);
-            Lampa.Menu.add('kinoger_test_menu_v7', {
-                title: 'Kinoger Test Menu v7',
-                url: 'plugin/kinoger_test_v7',
+            console.log('Starting Kinoger v8 plugin at ' + new Date().toLocaleTimeString());
+            Lampa.Component.add('kinoger_test_v8', component);
+            Lampa.Menu.add('kinoger_test_menu_v8', {
+                title: 'Kinoger Test Menu v8',
+                url: 'plugin/kinoger_test_v8',
                 type: 'catalog'
             });
-            console.log('Kinoger v7 plugin registered at ' + new Date().toLocaleTimeString());
-        }
+            console.log('Kinoger v8 plugin registered at ' + new Date().toLocaleTimeString());
 
-        // Убираем window.kinoger_plugin для теста
-        startPlugin();
-    } catch (e) {
-        console.error('Kinoger v7 error at ' + new Date().toLocaleTimeString() + ':', e);
-    }
+        } catch (e) {
+            console.error('Kinoger v8 error at ' + new Date().toLocaleTimeString() + ':', e);
+        }
+    }, 1000);
 })();
