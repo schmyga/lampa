@@ -1,34 +1,43 @@
 (function() {
     'use strict';
-    setTimeout(function() {
-        try {
-            console.log('Kinoger v8 script started at ' + new Date().toLocaleTimeString());
 
-            if (typeof Lampa === 'undefined') {
-                console.error('Lampa API not loaded at ' + new Date().toLocaleTimeString());
-                return;
-            }
+    var plugin = {
+        id: 'kinoger_test',
+        type: 'video',
+        name: 'Kinoger Test',
+        version: '1.0.0'
+    };
 
-            function component() {
-                this.initialize = function() {
-                    console.log('Kinoger v8 component initialized at ' + new Date().toLocaleTimeString());
-                    var scroll = new Lampa.Scroll({ mask: true, over: true });
-                    scroll.body().append('<div>Kinoger Test Menu v8</div>');
-                    Lampa.Controller.enable('content');
-                };
-            }
+    Lampa.Plugin.register(plugin);
 
-            console.log('Starting Kinoger v8 plugin at ' + new Date().toLocaleTimeString());
-            Lampa.Component.add('kinoger_test_v8', component);
-            Lampa.Menu.add('kinoger_test_menu_v8', {
-                title: 'Kinoger Test Menu v8',
-                url: 'plugin/kinoger_test_v8',
-                type: 'catalog'
-            });
-            console.log('Kinoger v8 plugin registered at ' + new Date().toLocaleTimeString());
+    // Тестовый каталог
+    plugin.catalog = function(add, params, call) {
+        var items = [];
+        items.push({
+            title: 'Тестовый фильм Kinoger',
+            year: '2025',
+            poster: 'https://via.placeholder.com/200x300?text=Test',
+            url: 'https://example.com/test',
+            type: 'movie'
+        });
+        add(items);
+        call(null, items);
+    };
 
-        } catch (e) {
-            console.error('Kinoger v8 error at ' + new Date().toLocaleTimeString() + ':', e);
-        }
-    }, 1000);
+    // Тестовый поток
+    plugin.stream = function(element, call) {
+        call(null, {
+            sources: [{
+                url: 'https://example.com/video.mp4',
+                quality: '1080p',
+                direct: true
+            }]
+        });
+    };
+
+    Lampa.Menu.add('kinoger_test', {
+        title: plugin.name,
+        url: 'plugin/' + plugin.id,
+        type: 'catalog'
+    });
 })();
