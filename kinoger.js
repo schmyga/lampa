@@ -6,7 +6,7 @@
         var scroll = new Lampa.Scroll({ mask: true, over: true });
         var filter = new Lampa.Filter(object);
         var last;
-        var balanser = 'kinoger'; // Фиксированный балансер для Kinoger
+        var balanser = 'kinoger';
 
         var filter_translate = {
             voice: Lampa.Lang.translate('torrent_parser_voice'),
@@ -35,26 +35,22 @@
                     }
                 }
             };
-            filter.render().find('.filter--sort span').text(Lampa.Lang.translate('lampac_balanser1'));
+            filter.render().find('.filter--sort span').text('Источник: Kinoger');
             scroll.body().addClass('torrent-list');
             scroll.body().append(Lampa.Template.get('lampac_content_loading'));
             Lampa.Controller.enable('content');
-            this.search();
-        };
-
-        this.search = function() {
-            this.reset();
             this.find();
         };
 
         this.find = function() {
             var url = 'https://kinoger.com/stream/';
-            console.log('Fetching catalog from Kinoger:', url);
+            console.log('Fetching catalog from:', url);
 
             network.silent(url, function(html) {
                 this.extractData(html);
                 this.append();
-            }.bind(this), function() {
+            }.bind(this), function(error) {
+                console.error('Network error:', error);
                 this.noConnectToServer();
             }.bind(this));
         };
@@ -69,10 +65,7 @@
             var elements = [];
             selectors.forEach(function(sel) {
                 var els = doc.querySelectorAll(sel);
-                if (els.length > 0) {
-                    elements = Array.from(els);
-                    console.log('Found elements with selector:', sel, 'Count:', els.length);
-                }
+                if (els.length > 0) elements = Array.from(els);
             });
 
             if (elements.length === 0) {
@@ -81,37 +74,19 @@
                     title: 'Тестовый фильм Kinoger',
                     year: '2024',
                     poster: 'https://via.placeholder.com/200x300?text=Kinoger Test',
-                    url: 'https://kinoger.com/stream/filmy/2024/venom-3-2024/', // Пример URL фильма
+                    url: 'https://kinoger.com/stream/filmy/2024/venom-3-2024/',
                     type: 'movie'
                 });
             } else {
                 elements.forEach(function(el) {
-                    var titleSelectors = ['.title', 'h2', 'h3', '.name', '.movie-title'];
-                    var title = '';
-                    titleSelectors.forEach(function(tsel) {
-                        var tel = el.querySelector(tsel);
-                        if (tel && !title) title = tel.textContent.trim();
-                    });
-
+                    var title = el.querySelector('.title, h2, h3, .name')?.textContent.trim() || 'Без названия';
                     var poster = el.querySelector('img')?.src || '';
                     var linkEl = el.querySelector('a');
                     var link = linkEl ? (linkEl.href.startsWith('http') ? linkEl.href : 'https://kinoger.com' + linkEl.href) : '';
-
-                    var yearSelectors = ['.year', '.release', '[class*="year"]'];
-                    var year = '';
-                    yearSelectors.forEach(function(ysel) {
-                        var yel = el.querySelector(ysel);
-                        if (yel && !year) year = yel.textContent.trim();
-                    });
+                    var year = el.querySelector('.year, .release')?.textContent.trim() || '';
 
                     if (title && link) {
-                        items.push({
-                            title: title,
-                            year: year,
-                            poster: poster,
-                            url: link,
-                            type: 'movie'
-                        });
+                        items.push({ title, year, poster, url: link, type: 'movie' });
                     }
                 });
             }
@@ -122,13 +97,17 @@
 
         this.append = function() {
             scroll.clear();
-            object.results.forEach(function(item) {
-                var elem = Lampa.Template.get('online_prestige_folder', item);
-                elem.on('hover:enter', function() {
-                    this.stream(item);
+            if (object.results && object.results.length) {
+                object.results.forEach(function(item) {
+                    var elem = Lampa.Template.get('online_prestige_folder', item);
+                    elem.on('hover:enter', function() {
+                        this.stream(item);
+                    }.bind(this));
+                    scroll.append(elem);
                 }.bind(this));
-                scroll.append(elem);
-            }.bind(this));
+            } else {
+                scroll.append('<div>Нет данных для отображения</div>');
+            }
         };
 
         this.stream = function(element) {
@@ -140,17 +119,15 @@
                 var doc = parser.parseFromString(html, 'text/html');
                 var video_url = '';
 
-                var iframe = doc.querySelector('iframe[src*=".m3u8"], iframe');
-                if (iframe && iframe.src.includes('.m3u8')) {
-                    video_url = iframe.src;
-                }
+                var iframe = doc.querySelector('iframe[src*=".m3u8"]');
+                if (iframe) video_url = iframe.src;
 
                 if (!video_url) {
                     var scripts = doc.querySelectorAll('script');
                     scripts.forEach(function(script) {
-                        var content = script.textContent || script.innerHTML;
+                        var content = script.textContent;
                         if (content.includes('.m3u8')) {
-                            var match = content.match(/https?:\/\/[^\s'"]+\.m3u8[^\s'"]*/g);
+                            var match = content.match(/https?:\/\/[^\s'"]+\.m3u8[^\s'"]*/);
                             if (match) video_url = match[0];
                         }
                     });
@@ -162,9 +139,9 @@
                         title: element.title,
                         quality: { 'Auto': video_url }
                     });
-                    Lampa.Player.runas('android'); // Для HLS на Android
+                    Lampa.Player.runas('android');
                 } else {
-                    Lampa.Noty.show('HLS-поток не найден. Проверьте страницу фильма.');
+                    Lampa.Noty.show('HLS-поток не найден.');
                 }
             }, function() {
                 Lampa.Noty.show('Ошибка загрузки страницы фильма.');
@@ -177,7 +154,7 @@
         };
 
         this.noConnectToServer = function() {
-            Lampa.Noty.show('Не удалось подключиться к Kinoger. Проверьте интернет.');
+            Lampa.Noty.show('Не удалось подключиться к Kinoger.');
         };
 
         this.start = function() {
@@ -217,7 +194,7 @@
 
         function addButton(e) {
             if (e.render.find('.kinoger--button').length) return;
-            var btn = $('<div class="full-start__button selector view--online"><svg style="enable-background:new 0 0 512 512;" version="1.1" viewBox="0 0 512 512" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="115.75" ry="115.75"></rect><path d="m377.25 0v512h-242.5V0h242.5zM338.5 448.75h-165V64.25h165v384.5z"></path></svg><span>Kinoger</span></div>');
+            var btn = $('<div class="full-start__button selector view--online"><svg width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg><span>Kinoger</span></div>');
             btn.on('hover:enter', function() {
                 Lampa.Activity.push({
                     url: '',
@@ -228,6 +205,7 @@
                 });
             });
             e.render.before(btn);
+            console.log('Kinoger button added');
         }
 
         Lampa.Listener.follow('full', function(e) {
@@ -235,6 +213,14 @@
                 addButton({ render: e.object.activity.render().find('.view--torrent'), movie: e.data.movie });
             }
         });
+
+        try {
+            if (Lampa.Activity.active().component == 'full') {
+                addButton({ render: Lampa.Activity.active().activity.render().find('.view--torrent'), movie: Lampa.Activity.active().card });
+            }
+        } catch (e) {
+            console.error('Button add error:', e);
+        }
     }
 
     if (!window.kinoger_plugin) startPlugin();
