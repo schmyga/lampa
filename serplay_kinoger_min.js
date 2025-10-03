@@ -1,0 +1,141 @@
+(function() {
+    'use strict';
+
+    try {
+        console.log('SerPlay Kinoger plugin started at ' + new Date().toLocaleTimeString());
+
+        if (typeof Lampa === 'undefined') {
+            console.error('Lampa API not loaded at ' + new Date().toLocaleTimeString());
+            return;
+        }
+
+        // Добавление кнопки "SerPlay" в full-view (страница фильма)
+        Lampa.Listener.follow('full', function(e) {
+            if (e.type == 'complite') {
+                if (e.object.activity.render().find('.serplay--button').length) return; // Избежать дубликатов
+
+                var btn = $('<div class="full-start__button selector view--online serplay--button"><span>SerPlay</span></div>');
+                btn.on('hover:enter', function() {
+                    // Переход к choice-view с балансером Kinoger
+                    Lampa.Activity.push({
+                        url: '',
+                        title: 'SerPlay Kinoger',
+                        component: 'serplay_kinoger',
+                        movie: e.data.movie, // Передача данных фильма
+                        page: 1
+                    });
+                });
+                e.object.activity.render().find('.view--torrent').after(btn);
+                console.log('SerPlay button added in full-view at ' + new Date().toLocaleTimeString());
+            }
+        });
+
+        // Компонент для choice-view (балансер Kinoger)
+        function component(object) {
+            var network = new Lampa.Reguest();
+            var scroll = new Lampa.Scroll({ mask: true, over: true });
+            var filter = new Lampa.Filter(object);
+            var movie = object.movie; // Данные фильма из full-view
+
+            this.initialize = function() {
+                console.log('SerPlay Kinoger choice-view initialized at ' + new Date().toLocaleTimeString());
+                filter.onSearch = function(value) {
+                    Lampa.Activity.replace({ search: value, clarification: true });
+                };
+                filter.onBack = function() {
+                    this.start();
+                };
+                filter.render().find('.filter--sort span').text('Балансер: Kinoger');
+                scroll.body().addClass('torrent-list');
+                scroll.body().append(Lampa.Template.get('lampac_content_loading'));
+                Lampa.Controller.enable('content');
+                this.searchMovieOnKinoger();
+            };
+
+            this.searchMovieOnKinoger = function() {
+                // Поиск фильма на Kinoger по названию из TMDB/CUB
+                var search_url = 'https://kinoger.com/stream/search/' + encodeURIComponent(movie.title);
+                console.log('Searching movie on Kinoger:', search_url);
+
+                network.silent(search_url, function(html) {
+                    this.extractStream(html);
+                    this.append();
+                }.bind(this), function(error) {
+                    console.error('Search error:', error);
+                    Lampa.Noty.show('Фильм не найден на Kinoger.');
+                }.bind(this));
+            };
+
+            this.extractStream = function(html) {
+                var video_url = '';
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+
+                // Поиск .m3u8 в iframe или скриптах (адаптируй селекторы под Kinoger)
+                var iframe = doc.querySelector('iframe[src*=".m3u8"]');
+                if (iframe) video_url = iframe.src;
+
+                if (!video_url) {
+                    var scripts = doc.querySelectorAll('script');
+                    scripts.forEach(function(script) {
+                        var content = script.textContent;
+                        if (content.includes('.m3u8')) {
+                            var match = content.match(/https?:\/\/[^\s'"]+\.m3u8[^\s'"]*/);
+                            if (match) video_url = match[0];
+                        }
+                    });
+                }
+
+                if (video_url) {
+                    this.object.results = [{
+                        title: movie.title,
+                        url: video_url,
+                        quality: 'Auto',
+                        direct: true
+                    }];
+                } else {
+                    this.object.results = [];
+                    Lampa.Noty.show('HLS-поток не найден на Kinoger.');
+                }
+                console.log('Stream extracted, URL:', video_url);
+            };
+
+            this.append = function() {
+                scroll.clear();
+                if (this.object.results.length) {
+                    this.object.results.forEach(function(item) {
+                        var elem = Lampa.Template.get('online_modal', item);
+                        elem.on('hover:enter', function() {
+                            Lampa.Player.play({
+                                url: item.url,
+                                title: item.title,
+                                quality: { 'Auto': item.url }
+                            });
+                        });
+                        scroll.append(elem);
+                    });
+                } else {
+                    scroll.append('<div>Нет доступных потоков на Kinoger</div>');
+                }
+            };
+
+            this.reset = function() {
+                scroll.clear();
+                filter.reset();
+            };
+
+            this.destroy = function() {
+                scroll.destroy();
+                filter.destroy();
+                Lampa.Controller.toggle('content');
+                console.log('SerPlay Kinoger choice-view destroyed at ' + new Date().toLocaleTimeString());
+            };
+        }
+
+        Lampa.Component.add('serplay_kinoger', component);
+        console.log('SerPlay Kinoger plugin registered at ' + new Date().toLocaleTimeString());
+
+    } catch (e) {
+        console.error('SerPlay Kinoger plugin error at ' + new Date().toLocaleTimeString() + ':', e);
+    }
+})();
