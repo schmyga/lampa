@@ -1,33 +1,75 @@
-
 (function() {
     'use strict';
-    try {
-        console.log('Kinoger v9 script started at ' + new Date().toLocaleTimeString());
 
-        if (typeof Lampa === 'undefined') {
-            console.error('Lampa API not loaded at ' + new Date().toLocaleTimeString());
+    function waitForLampa() {
+        if (typeof Lampa === 'undefined' || !Lampa.Plugin || !Lampa.Menu) {
+            console.log('[Kinoger] Lampa not ready, waiting...');
+            setTimeout(waitForLampa, 1000);
             return;
         }
 
-        function component() {
-            this.initialize = function() {
-                console.log('Kinoger v9 component initialized at ' + new Date().toLocaleTimeString());
-                var scroll = new Lampa.Scroll({ mask: true, over: true });
-                scroll.body().append('<div>Kinoger Test Menu v9</div>');
-                Lampa.Controller.enable('content');
-            };
+        console.log('[Kinoger] Lampa ready, initializing plugin');
+
+        var plugin = {
+            id: 'kinoger_test_v7',
+            name: 'Kinoger Test v7',
+            type: 'video',
+            version: '7.0.0'
+        };
+
+        // Регистрация плагина
+        try {
+            Lampa.Plugin.register(plugin);
+            console.log('[Kinoger] Plugin registered:', plugin.id);
+        } catch (e) {
+            console.error('[Kinoger] register error', e);
+            return;
         }
 
-        console.log('Starting Kinoger v9 plugin at ' + new Date().toLocaleTimeString());
-        Lampa.Component.add('kinoger_test_v9', component);
-        Lampa.Menu.add('kinoger_test_menu_v9', {
-            title: 'Kinoger Test Menu v9',
-            url: 'plugin/kinoger_test_v9',
-            type: 'catalog'
-        });
-        console.log('Kinoger v9 plugin registered at ' + new Date().toLocaleTimeString());
+        // Реализация каталога
+        plugin.catalog = function(add, params, call) {
+            console.log('[Kinoger] Catalog called');
+            var items = [{
+                title: 'Тестовое видео HLS',
+                year: '2025',
+                poster: 'https://via.placeholder.com/200x300?text=Kinoger',
+                url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                type: 'movie'
+            }];
+            add(items);
+            call(null, items);
+        };
 
-    } catch (e) {
-        console.error('Kinoger v9 error at ' + new Date().toLocaleTimeString() + ':', e);
+        // Реализация потока
+        plugin.stream = function(element, call) {
+            console.log('[Kinoger] Stream called for:', element.url);
+            call(null, {
+                sources: [
+                    {
+                        url: element.url,
+                        quality: 'Auto',
+                        direct: false
+                    }
+                ]
+            });
+        };
+
+        // Добавление в меню
+        setTimeout(function() {
+            try {
+                Lampa.Menu.add(plugin.id, {
+                    title: plugin.name,
+                    subtitle: 'Тестовый каталог HLS',
+                    icon: 'play-circle',
+                    url: 'plugin/' + plugin.id,
+                    type: 'plugin'
+                });
+                console.log('[Kinoger] Menu item added');
+            } catch (e) {
+                console.error('[Kinoger] Menu.add error', e);
+            }
+        }, 2000);
     }
+
+    waitForLampa();
 })();
