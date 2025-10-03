@@ -53,4 +53,23 @@
         }
     });
 })();
+Lampa.Listener.follow('app', function (e) {
+    if (e.type == 'ready') {
+        var button = $('<li class="menu__item selector" data-action="kinoger">' +
+            '<div class="menu__ico"><svg width="24" height="24" fill="none" stroke="white" stroke-width="2"><path d="M4 4h16v16H4z"/></svg></div>' +
+            '<div class="menu__text">KinoGer</div>' +
+        '</li>');
+
+        button.on('hover:enter', function () {
+            Lampa.Activity.push({
+                url: '',
+                title: 'KinoGer',
+                component: 'kinoger',
+                page: 1
+            });
+        });
+
+        $('.menu .menu__list').eq(0).append(button);
+    }
+});
 
